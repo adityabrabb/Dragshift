@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading.Tasks;
 using DragShift.Core;
@@ -17,10 +18,10 @@ sealed class WindowsPdfRasterizer : IPdfRasterizer
     /// <summary>Caps the rendered page width so huge pages don't exhaust memory.</summary>
     const uint MaxWidth = 5000;
 
-    public IReadOnlyList<byte[]> RenderPages(string pdfPath, int dpi) =>
-        Task.Run(() => RenderAsync(pdfPath, dpi)).GetAwaiter().GetResult();
+    public IReadOnlyList<byte[]> RenderPages(string pdfPath, int dpi, IReadOnlyList<int>? pages = null) =>
+        Task.Run(() => RenderAsync(pdfPath, dpi, pages)).GetAwaiter().GetResult();
 
-    static async Task<IReadOnlyList<byte[]>> RenderAsync(string pdfPath, int dpi)
+    static async Task<IReadOnlyList<byte[]>> RenderAsync(string pdfPath, int dpi, IReadOnlyList<int>? which)
     {
         PdfDocument doc;
         try
@@ -34,9 +35,10 @@ sealed class WindowsPdfRasterizer : IPdfRasterizer
         }
 
         var pages = new List<byte[]>();
-        for (uint i = 0; i < doc.PageCount; i++)
+        foreach (var i in which ?? Enumerable.Range(0, (int)doc.PageCount).ToList())
         {
-            using var page = doc.GetPage(i);
+            if (i < 0 || i >= doc.PageCount) throw new ArgumentOutOfRangeException(nameof(which), i, "No such page");
+            using var page = doc.GetPage((uint)i);
             // Page.Size is in DIPs (1/96 in).
             var width = (uint)Math.Clamp(Math.Round(page.Size.Width * dpi / 96.0), 1, MaxWidth);
             var options = new PdfPageRenderOptions
@@ -64,6 +66,24 @@ sealed class WindowsPdfRasterizer : IPdfRasterizer
 /// <summary>HEIC through the Windows Imaging Component, which needs Microsoft's HEIF/HEVC extensions installed.</summary>
 sealed class WindowsHeicEncoder : IHeicEncoder
 {
+    /// <summary>
+    /// An encoder if this PC can really write HEIC (the HEIF and HEVC extensions are installed), otherwise null.
+    /// Checked by encoding a tiny image, since the HEIF encoder can be registered while the HEVC codec it needs isn't.
+    /// </summary>
+    public static WindowsHeicEncoder? TryCreate()
+    {
+        try
+        {
+            using var probe = new ImageMagick.MagickImage(ImageMagick.MagickColors.Gray, 16, 16) { Format = ImageMagick.MagickFormat.Png };
+            var heic = EncodeCoreAsync(probe.ToByteArray(), 80).GetAwaiter().GetResult();
+            return heic.Length > 0 ? new WindowsHeicEncoder() : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     public byte[] EncodeHeic(byte[] png, int quality) =>
         Task.Run(() => EncodeAsync(png, quality)).GetAwaiter().GetResult();
 

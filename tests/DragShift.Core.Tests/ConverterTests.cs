@@ -104,10 +104,10 @@ public sealed class ConverterTests : IDisposable
     [Fact]
     public void Docx_pictures_fit_the_page()
     {
-        var (cx, cy) = DocxWriter.FitEmu(new DocxWriter.Picture([], 6000, 3000, 96, 96));
+        var (cx, cy) = DocxWriter.FitEmu(new DocBlock.Picture([], 6000, 3000));
         Assert.Equal((long)(6.5 * 914400), cx);
         Assert.Equal(cx / 2, cy);
-        var (sx, sy) = DocxWriter.FitEmu(new DocxWriter.Picture([], 96, 48, 96, 96));
+        var (sx, sy) = DocxWriter.FitEmu(new DocBlock.Picture([], 96, 48));
         Assert.Equal((914400L, 457200L), (sx, sy));
     }
 
@@ -124,8 +124,6 @@ public sealed class ConverterTests : IDisposable
         using var tiff = new MagickImageCollection(Assert.Single(Converter.Convert(pdf, TargetFormat.Tiff)));
         Assert.Equal(3, tiff.Count);
 
-        using var docx = ZipFile.OpenRead(Assert.Single(Converter.Convert(pdf, TargetFormat.Docx)));
-        Assert.Equal(3, docx.Entries.Count(e => e.FullName.StartsWith("word/media/")));
     }
 
     [Fact]
@@ -141,10 +139,13 @@ public sealed class ConverterTests : IDisposable
     public void Heic_output_goes_through_the_platform_encoder()
     {
         var src = files.Photo();
+        // Without a working encoder HEIC isn't offered at all.
+        Assert.False(Formats.CanConvert(src, TargetFormat.Heic));
         Assert.Throws<UserFacingException>(() => Converter.Convert(src, TargetFormat.Heic));
 
         byte[]? received = null;
         Platform.Heic = new FakeHeic(png => received = png);
+        Assert.True(Formats.CanConvert(src, TargetFormat.Heic));
         var output = Assert.Single(Converter.Convert(src, TargetFormat.Heic));
         Assert.Equal("photo.heic", Path.GetFileName(output));
         using var sent = new MagickImage(received!);

@@ -22,9 +22,9 @@ No Shift handy? Left-click the tray icon (or choose **Open the wheel**) and drag
 | | Notes |
 |---|---|
 | **PNG, JPG, WEBP, AVIF, BMP, TIFF** | Any image → any of these. Animated GIFs keep their frames in WEBP/TIFF. JPG/BMP get a white background where the source was transparent. |
-| **HEIC** | Uses Windows' own HEIF encoder: install Microsoft's free *HEIF Image Extensions* and *HEVC Video Extensions* from the Store. |
+| **HEIC** | Uses Windows' own HEIF encoder. DragShift checks at startup whether this PC can really write HEIC (Microsoft's free *HEIF Image Extensions* + *HEVC Video Extensions*); if not, the HEIC slice is greyed out and says why. |
 | **PDF** | Images → PDF (multi-frame files become multi-page PDFs). |
-| **DOCX** | Images or PDF pages placed into a Word document, one per page, fitted to the margins. (Pages are pictures, not editable text.) |
+| **DOCX** | **PDF → editable Word text**: paragraphs in reading order (multi-column aware), font sizes, bold/italic, headings, hyphenated line breaks re-joined, and embedded images in place. Scanned pages (no text layer) come in as a picture of the page. Images → DOCX places each image on its own page. Tables and exact positioning aren't reproduced; text flows as paragraphs. |
 
 PDFs can be dropped too: they're rendered with Windows' built-in PDF engine, one image per page (or one multi-page TIFF).
 
@@ -49,6 +49,7 @@ PDFs can be dropped too: they're rendered with Windows' built-in PDF engine, one
 - **Only for drags from Explorer and the desktop** (default on): so Shift-dragging to select text in other apps isn't
   interrupted. Turn it off to get the wheel for drags from any app.
 - **Start with Windows**.
+- **Open-source licenses**: shows the license texts of everything bundled.
 
 ## Download
 
@@ -84,4 +85,8 @@ it, a borderless, non-activating, topmost window (the wheel) is shown centered o
 still in progress, the wheel is simply a drop target: Windows delivers the files to whichever slice you release on.
 Results are always written as new files; DragShift never moves, renames or overwrites your files.
 
-Third-party components are listed in [NOTICE](NOTICE).
+## License
+
+DragShift is open source under the [MIT License](LICENSE). It bundles other open-source components (Magick.NET /
+ImageMagick and its codecs, ONNX Runtime, PdfPig, the U²-Net model, the .NET runtime); see
+[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) and the full texts in [`licenses/`](licenses).

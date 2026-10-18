@@ -8,12 +8,23 @@ public static class Converter
     /// <summary>Converts <paramref name="source"/> and returns the file(s) written. The source is never modified.</summary>
     public static IReadOnlyList<string> Convert(string source, TargetFormat target)
     {
+        if (!Formats.IsAvailable(target))
+            throw new UserFacingException($"Saving {Formats.Label(target)} isn't available on this PC.");
         if (!Formats.CanConvert(source, target))
             throw new UserFacingException($"“{Path.GetFileName(source)}” can't be converted to {Formats.Label(target)}.");
 
-        using var frames = ImageIO.Load(source);
         var isPdf = Formats.KindOf(source) == FileKind.Pdf;
         var ext = Formats.Extension(target);
+
+        if (isPdf && target == TargetFormat.Docx)
+        {
+            // Real text, not pictures of pages: extracted from the PDF's text layer.
+            var output = OutputPaths.NextTo(source, ext);
+            DocxWriter.Write(output, PdfToDocx.Extract(source), Path.GetFileNameWithoutExtension(source));
+            return [output];
+        }
+
+        using var frames = ImageIO.Load(source);
 
         switch (target)
         {
@@ -39,10 +50,12 @@ public static class Converter
             case TargetFormat.Docx:
             {
                 var output = OutputPaths.NextTo(source, ext);
-                var pictures = frames.Select(f => new DocxWriter.Picture(
-                    ImageIO.ToPng(f), (int)f.Width, (int)f.Height,
-                    f.Density.X > 1 ? DpiOf(f.Density).x : 96, f.Density.Y > 1 ? DpiOf(f.Density).y : 96)).ToList();
-                DocxWriter.Write(output, pictures, Path.GetFileNameWithoutExtension(source));
+                var pictures = frames.Select(f =>
+                {
+                    var (dx, dy) = f.Density.X > 1 ? DpiOf(f.Density) : (96, 96);
+                    return new DocBlock.Picture(ImageIO.ToPng(f), (int)f.Width, (int)f.Height, f.Width / dx, f.Height / dy);
+                }).ToList();
+                DocxWriter.WritePictures(output, pictures, Path.GetFileNameWithoutExtension(source));
                 return [output];
             }
             default:

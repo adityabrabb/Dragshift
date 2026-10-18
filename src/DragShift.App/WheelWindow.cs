@@ -308,6 +308,15 @@ sealed class WheelWindow : Window
     {
         var s = SliceAt(e.GetPosition(canvas));
         SetHover(s is { Enabled: true } ? s : null);
+        if (s is { Enabled: false } && files.Length > 0)
+        {
+            // Say why a greyed-out slice can't take these files.
+            centerTitle.Text = s.Action.Describe;
+            centerSub.Text = s.Action is WheelAction.Convert { Format: var f } && !Formats.IsAvailable(f)
+                ? $"{Formats.Label(f)} isn't available on this PC"
+                : "Not for these files";
+        }
+        else if (hover is null) ResetCenter();
         e.Effects = hover is null ? DragDropEffects.None : DragDropEffects.Copy;
         e.Handled = true;
     }

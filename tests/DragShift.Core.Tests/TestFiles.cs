@@ -54,10 +54,14 @@ public sealed class TestFiles : IDisposable
 /// <summary>Stand-in for Windows.Data.Pdf: "renders" a fixed number of solid-color pages.</summary>
 public sealed class FakePdf(int pages) : IPdfRasterizer
 {
-    public IReadOnlyList<byte[]> RenderPages(string pdfPath, int dpi)
+    public List<int> Rendered { get; } = [];
+
+    public IReadOnlyList<byte[]> RenderPages(string pdfPath, int dpi, IReadOnlyList<int>? which = null)
     {
         var colors = new[] { MagickColors.White, MagickColors.LightGray, MagickColors.Yellow };
-        return Enumerable.Range(0, pages).Select(i =>
+        var indexes = which ?? Enumerable.Range(0, pages).ToList();
+        Rendered.AddRange(indexes);
+        return indexes.Select(i =>
         {
             using var img = new MagickImage(colors[i % colors.Length], 170, 220) { Format = MagickFormat.Png };
             return img.ToByteArray();

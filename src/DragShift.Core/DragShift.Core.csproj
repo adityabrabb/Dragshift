@@ -8,12 +8,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Magick.NET-Q8-AnyCPU" Version="14.2.0" />
-    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.20.1" />
+    <PackageReference Include="Magick.NET-Q8-AnyCPU" Version="14.17.2" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.31.0" />
+    <PackageReference Include="PdfPig" Version="0.1.16" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- U^2-Net (small) salient-object model for background removal. Apache-2.0, see NOTICE. -->
+    <!-- U^2-Net (small) salient-object model for background removal. Apache-2.0, see THIRD-PARTY-NOTICES.md. -->
     <InternalsVisibleTo Include="DragShift.Core.Tests" />
     <EmbeddedResource Include="Models\u2netp.onnx" LogicalName="DragShift.u2netp.onnx" />
   </ItemGroup>

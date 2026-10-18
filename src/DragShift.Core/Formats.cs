@@ -63,7 +63,12 @@ public static class Formats
         _ => null,
     };
 
-    /// <summary>A conversion makes sense when the file is readable and isn't already in that format.</summary>
+    /// <summary>
+    /// A conversion makes sense when the file is readable, isn't already in that format, and this system can write the
+    /// format (HEIC needs Windows' HEIF/HEVC codecs).
+    /// </summary>
     public static bool CanConvert(string path, TargetFormat target) =>
-        KindOf(path) != FileKind.Unsupported && CurrentFormat(path) != target;
+        KindOf(path) != FileKind.Unsupported && CurrentFormat(path) != target && IsAvailable(target);
+
+    public static bool IsAvailable(TargetFormat target) => target != TargetFormat.Heic || Platform.Heic is not null;
 }

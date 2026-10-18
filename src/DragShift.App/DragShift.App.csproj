@@ -31,6 +31,9 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Assets\dragshift.ico" LogicalName="DragShift.icon.ico" />
+    <EmbeddedResource Include="..\..\LICENSE" LogicalName="DragShift.LICENSE" />
+    <EmbeddedResource Include="..\..\THIRD-PARTY-NOTICES.md" LogicalName="DragShift.THIRD-PARTY-NOTICES.md" />
+    <EmbeddedResource Include="..\..\licenses\*.txt" LogicalName="DragShift.licenses.%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>

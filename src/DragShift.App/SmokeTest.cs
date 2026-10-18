@@ -128,15 +128,39 @@ static class SmokeTest
 
         Step("heic", () =>
         {
-            try
+            // Offered only when the HEIF/HEVC codecs are installed; when offered it must work.
+            if (Platform.Heic is null)
             {
-                Converter.Convert(sample, TargetFormat.Heic);
+                if (Formats.CanConvert(sample, TargetFormat.Heic)) throw new InvalidOperationException("HEIC offered without an encoder");
+                Log("     HEIC codecs not installed: HEIC is hidden from the wheel");
+                return;
             }
-            catch (UserFacingException e)
-            {
-                // Fine when the optional HEIF/HEVC codecs aren't installed; anything else is a bug.
-                Log($"     {e.Message}");
-            }
+            var output = Converter.Convert(sample, TargetFormat.Heic).Single();
+            using var img = new MagickImage(output);
+            if (img.Width != 1200) throw new InvalidOperationException("HEIC round-trip lost the image");
+            Log($"     saved {Path.GetFileName(output)}");
+        });
+
+        Step("pdf-to-docx", () =>
+        {
+            // A PDF with a real text layer must come out as text, not pictures.
+            var builder = new UglyToad.PdfPig.Writer.PdfDocumentBuilder();
+            var font = builder.AddStandard14Font(UglyToad.PdfPig.Fonts.Standard14Fonts.Standard14Font.Helvetica);
+            builder.AddPage(UglyToad.PdfPig.Content.PageSize.A4).AddText("Hello from a text PDF", 14, new UglyToad.PdfPig.Core.PdfPoint(72, 700), font);
+            var pdf = Path.Combine(dir, "text.pdf");
+            File.WriteAllBytes(pdf, builder.Build());
+            var docx = Converter.Convert(pdf, TargetFormat.Docx).Single();
+            using var zip = System.IO.Compression.ZipFile.OpenRead(docx);
+            using var reader = new StreamReader(zip.GetEntry("word/document.xml")!.Open());
+            if (!reader.ReadToEnd().Contains("Hello from a text PDF")) throw new InvalidOperationException("text missing from DOCX");
+            Log($"     saved {Path.GetFileName(docx)} with the PDF's text");
+        });
+
+        Step("licenses-embedded", () =>
+        {
+            var names = typeof(SmokeTest).Assembly.GetManifestResourceNames();
+            foreach (var required in new[] { "DragShift.LICENSE", "DragShift.THIRD-PARTY-NOTICES.md", "DragShift.licenses.Apache-2.0.txt", "DragShift.licenses.Magick.NET-and-ImageMagick-NOTICE.txt" })
+                if (!names.Contains(required)) throw new InvalidOperationException($"missing {required}");
         });
 
         Log(failures.Count == 0 ? "SMOKE TEST PASSED" : $"SMOKE TEST FAILED: {string.Join(", ", failures)}");
