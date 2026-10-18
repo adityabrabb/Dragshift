@@ -104,6 +104,7 @@ sealed class WheelWindow : Window
         AllowDrop = true;
         Opacity = 0;
         Title = "DragShift";
+        Closing += (_, _) => closing = true;
 
         // A layered window is click/drop-through wherever it's fully transparent, so the whole disc gets a
         // (barely) visible backdrop — otherwise gaps between slices would drop onto whatever is behind.
@@ -143,15 +144,28 @@ sealed class WheelWindow : Window
         DragOver += OnDragOver;
         DragLeave += (_, _) => SetHover(null);
         Drop += OnDrop;
-        KeyDown += (_, e) => { if (e.Key == Key.Escape) Close(); };
-        Deactivated += (_, _) => { if (pinned && !dropped) Close(); };
+        KeyDown += (_, e) => { if (e.Key == Key.Escape) Dismiss(); };
+        Deactivated += (_, _) => { if (pinned && !dropped) Dismiss(); };
         MouseLeftButtonUp += (_, e) =>
         {
             // In pinned mode, clicking the middle closes the wheel.
             var p = e.GetPosition(canvas);
-            if (pinned && Distance(p.X - C, p.Y - C) < CenterR) Close();
+            if (pinned && Distance(p.X - C, p.Y - C) < CenterR) Dismiss();
         };
         ResetCenter();
+    }
+
+    bool closing;
+
+    /// <summary>
+    /// Closes the wheel once. Closing a window deactivates it, and the pinned wheel closes on deactivation, so a plain
+    /// Close() would be re-entered while the window is already closing (which WPF rejects with an exception).
+    /// </summary>
+    public void Dismiss()
+    {
+        if (closing) return;
+        closing = true;
+        Close();
     }
 
     /// <summary>Shows the wheel centered on a point in physical screen pixels, for a drag in progress.</summary>
@@ -184,7 +198,7 @@ sealed class WheelWindow : Window
         t.Tick += (_, _) =>
         {
             t.Stop();
-            if (!dropped) Close();
+            if (!dropped) Dismiss();
         };
         t.Start();
     }
@@ -328,7 +342,7 @@ sealed class WheelWindow : Window
         if (s is not { Enabled: true } || files.Length == 0)
         {
             e.Effects = DragDropEffects.None;
-            if (!pinned) Close();
+            if (!pinned) Dismiss();
             return;
         }
         e.Effects = DragDropEffects.Copy;
@@ -337,7 +351,7 @@ sealed class WheelWindow : Window
         // Let the drag source finish before doing anything that might open windows.
         Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
         {
-            Close();
+            Dismiss();
             ActionChosen?.Invoke(chosen, s.Action);
         });
     }

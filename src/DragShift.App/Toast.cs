@@ -131,7 +131,7 @@ sealed class Toast : Window
     {
         hideTimer.Stop();
         var anim = new DoubleAnimation(0, TimeSpan.FromMilliseconds(250));
-        anim.Completed += (_, _) => { if (!busy) Close(); };
+        anim.Completed += (_, _) => { if (!busy && IsLoaded) Close(); };
         BeginAnimation(OpacityProperty, anim);
     }
 }

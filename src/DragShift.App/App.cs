@@ -42,11 +42,13 @@ sealed class App : Application
                 try { Directory.CreateDirectory(dir); File.AppendAllText(Path.Combine(dir, "smoke.log"), text + Environment.NewLine); } catch { }
             }
             AppDomain.CurrentDomain.UnhandledException += (_, e) => Crash(e.ExceptionObject);
+            var crashed = false;
             test.DispatcherUnhandledException += (_, e) =>
             {
+                // Record it and carry on, so one failure can't hide the steps after it.
                 Crash(e.Exception);
+                crashed = true;
                 e.Handled = true;
-                test.Shutdown(2);
             };
             test.Startup += (_, _) => test.Dispatcher.BeginInvoke(() =>
             {
@@ -59,6 +61,7 @@ sealed class App : Application
                     Crash(e);
                     code = 3;
                 }
+                if (crashed && code == 0) code = 2;
                 test.Shutdown(code);
             });
             test.Run();
@@ -165,14 +168,14 @@ sealed class App : Application
 
     void ShowWheel(int x, int y)
     {
-        wheel?.Close();
+        wheel?.Dismiss();
         wheel = NewWheel();
         wheel.ShowAt(x, y);
     }
 
     void ShowPinnedWheel()
     {
-        wheel?.Close();
+        wheel?.Dismiss();
         wheel = NewWheel();
         wheel.ShowPinned();
     }
