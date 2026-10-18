@@ -49,7 +49,6 @@ PDFs can be dropped too: they're rendered with Windows' built-in PDF engine, one
 - **Only for drags from Explorer and the desktop** (default on): so Shift-dragging to select text in other apps isn't
   interrupted. Turn it off to get the wheel for drags from any app.
 - **Start with Windows**.
-- **Open-source licenses**: shows the license texts of everything bundled.
 
 ## Download
 
@@ -84,9 +83,3 @@ A low-level mouse hook notices a left-button drag that started in Explorer or on
 it, a borderless, non-activating, topmost window (the wheel) is shown centered on the cursor. Since the system drag is
 still in progress, the wheel is simply a drop target: Windows delivers the files to whichever slice you release on.
 Results are always written as new files; DragShift never moves, renames or overwrites your files.
-
-## License
-
-DragShift is open source under the [MIT License](LICENSE). It bundles other open-source components (Magick.NET /
-ImageMagick and its codecs, ONNX Runtime, PdfPig, the U²-Net model, the .NET runtime); see
-[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) and the full texts in [`licenses/`](licenses).

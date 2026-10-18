@@ -16,7 +16,7 @@ namespace DragShift.App.Editors;
 sealed class RedactEditor : EditorWindow
 {
     readonly List<Rect> rects = [];
-    readonly Rectangle rubber = new() { Stroke = Theme.AccentBrush, Fill = new SolidColorBrush(Color.FromArgb(0x40, 0xFF, 0x5A, 0x1F)), Visibility = Visibility.Collapsed, IsHitTestVisible = false };
+    readonly Rectangle rubber = new() { Stroke = Theme.AccentBrush, Fill = new SolidColorBrush(Color.FromArgb(0x40, 0x1F, 0x9D, 0x55)), Visibility = Visibility.Collapsed, IsHitTestVisible = false };
     readonly Button undo = new() { Content = "Undo" };
     readonly Button clear = new() { Content = "Clear" };
     RedactStyle style = RedactStyle.Box;

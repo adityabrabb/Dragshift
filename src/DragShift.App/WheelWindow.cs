@@ -62,9 +62,9 @@ sealed class WheelWindow : Window
     static readonly ToolKind[] InnerOrder =
         [ToolKind.Compress, ToolKind.Metadata, ToolKind.Edit, ToolKind.Annotate, ToolKind.RemoveBg, ToolKind.AddBg, ToolKind.Crop, ToolKind.Redact];
 
-    static readonly Brush SliceFill = Frozen(Color.FromArgb(0xF2, 0xFF, 0xE9, 0xDA));
-    static readonly Brush SliceHover = Frozen(Color.FromRgb(0xFF, 0x5A, 0x1F));
-    static readonly Brush SliceText = Frozen(Color.FromRgb(0x2B, 0x1D, 0x16));
+    static readonly Brush SliceFill = Frozen(Color.FromArgb(0xF2, 0xE4, 0xF5, 0xEA));
+    static readonly Brush SliceHover = Frozen(Color.FromRgb(0x1F, 0x9D, 0x55));
+    static readonly Brush SliceText = Frozen(Color.FromRgb(0x12, 0x26, 0x1B));
 
     sealed class Slice
     {
@@ -110,7 +110,7 @@ sealed class WheelWindow : Window
         canvas.Children.Add(new Ellipse
         {
             Width = 2 * (OuterR + 6), Height = 2 * (OuterR + 6),
-            Fill = Frozen(Color.FromArgb(0xB8, 0xFF, 0xF1, 0xE6)),
+            Fill = Frozen(Color.FromArgb(0xB8, 0xEC, 0xF8, 0xF0)),
             Stroke = Frozen(Color.FromArgb(0x50, 0xFF, 0xFF, 0xFF)), StrokeThickness = 1.5,
             Effect = new DropShadowEffect { BlurRadius = 24, ShadowDepth = 4, Opacity = 0.28 },
         }.At(C - OuterR - 6, C - OuterR - 6));
@@ -121,8 +121,8 @@ sealed class WheelWindow : Window
         canvas.Children.Add(new Ellipse
         {
             Width = 2 * CenterR, Height = 2 * CenterR,
-            Fill = Frozen(Color.FromArgb(0xFF, 0xFF, 0xF7, 0xF1)),
-            Stroke = Frozen(Color.FromArgb(0x30, 0xA0, 0x52, 0x2D)), StrokeThickness = 1,
+            Fill = Frozen(Color.FromArgb(0xFF, 0xF6, 0xFC, 0xF8)),
+            Stroke = Frozen(Color.FromArgb(0x30, 0x2E, 0x7D, 0x4F)), StrokeThickness = 1,
         }.At(C - CenterR, C - CenterR));
         var center = new StackPanel { Width = 104, VerticalAlignment = VerticalAlignment.Center };
         center.Children.Add(centerTitle);

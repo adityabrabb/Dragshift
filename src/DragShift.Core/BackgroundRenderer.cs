@@ -41,6 +41,7 @@ public static class BackgroundPresets
 {
     public static readonly Backdrop.Mesh[] Gradients =
     [
+        Mesh(("#0f7a45", 0.0, 1.0), ("#5ad68f", 0.6, 0.0), ("#b8f0c9", 1.0, 0.4), ("#1f9d8a", 1.0, 1.0)),
         Mesh(("#ff5f3a", 0.0, 1.0), ("#ffb347", 0.6, 0.0), ("#ff8a5c", 1.0, 0.5), ("#9b6dd6", 1.0, 1.0)),
         Mesh(("#e9eef7", 0.0, 0.0), ("#c3d3f0", 1.0, 0.2), ("#ffffff", 0.3, 1.0), ("#dfe6f5", 1.0, 1.0)),
         Mesh(("#ff6fb5", 0.0, 0.0), ("#ffd36e", 1.0, 0.0), ("#6fe3c8", 0.0, 1.0), ("#7a8cff", 1.0, 1.0)),
@@ -49,7 +50,6 @@ public static class BackgroundPresets
         Mesh(("#0f5132", 0.0, 0.0), ("#e4572e", 1.0, 0.0), ("#f3a712", 0.0, 1.0), ("#29335c", 1.0, 1.0)),
         Mesh(("#5b8def", 0.0, 0.0), ("#8ad7f5", 1.0, 0.0), ("#b388eb", 0.0, 1.0), ("#5ee0d0", 1.0, 1.0)),
         Mesh(("#33c3d6", 0.0, 0.0), ("#5be0b3", 1.0, 0.5), ("#4aa8ff", 0.2, 1.0)),
-        Mesh(("#f7f2ff", 0.0, 0.0), ("#e9ddff", 1.0, 1.0), ("#ffffff", 0.5, 0.5)),
     ];
 
     public static readonly string[] Solids =

@@ -188,7 +188,7 @@ abstract class EditorWindow : Window
     static Brush Checkerboard()
     {
         var light = new SolidColorBrush(Color.FromArgb(0x70, 0xFF, 0xFF, 0xFF));
-        var dark = new SolidColorBrush(Color.FromArgb(0x40, 0xE8, 0xD2, 0xC4));
+        var dark = new SolidColorBrush(Color.FromArgb(0x40, 0xC6, 0xE3, 0xD0));
         var group = new DrawingGroup();
         group.Children.Add(new GeometryDrawing(light, null, new RectangleGeometry(new Rect(0, 0, 16, 16))));
         group.Children.Add(new GeometryDrawing(dark, null, new RectangleGeometry(new Rect(0, 0, 8, 8))));

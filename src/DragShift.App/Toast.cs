@@ -51,7 +51,7 @@ sealed class Toast : Window
             Margin = new Thickness(14),
             CornerRadius = new CornerRadius(14),
             Background = Theme.WindowBackground,
-            BorderBrush = new SolidColorBrush(Color.FromArgb(0x40, 0xA0, 0x52, 0x2D)),
+            BorderBrush = new SolidColorBrush(Color.FromArgb(0x40, 0x2E, 0x7D, 0x4F)),
             BorderThickness = new Thickness(1),
             Effect = new DropShadowEffect { BlurRadius = 18, ShadowDepth = 3, Opacity = 0.25 },
             Child = stack,

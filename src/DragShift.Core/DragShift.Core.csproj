@@ -14,7 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- U^2-Net (small) salient-object model for background removal. Apache-2.0, see THIRD-PARTY-NOTICES.md. -->
+    <!-- U^2-Net (small) salient-object model for background removal. -->
     <InternalsVisibleTo Include="DragShift.Core.Tests" />
     <EmbeddedResource Include="Models\u2netp.onnx" LogicalName="DragShift.u2netp.onnx" />
   </ItemGroup>

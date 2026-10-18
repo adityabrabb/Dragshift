@@ -137,34 +137,8 @@ sealed class App : Application
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("How it works", null, (_, _) => Toast.Info("How DragShift works",
             "Start dragging a file, then hold Shift: the wheel appears under the cursor. Drop on a format to convert, or on a tool to edit. Results are saved next to the original."));
-        menu.Items.Add("Open-source licenses", null, (_, _) => ShowLicenses());
         menu.Items.Add("Quit DragShift", null, (_, _) => Quit());
         return menu;
-    }
-
-    /// <summary>Writes the bundled license texts to a folder and opens it, with the overview in Notepad.</summary>
-    static void ShowLicenses()
-    {
-        try
-        {
-            var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DragShift", "licenses");
-            Directory.CreateDirectory(dir);
-            var asm = typeof(App).Assembly;
-            foreach (var name in asm.GetManifestResourceNames())
-            {
-                if (!name.StartsWith("DragShift.licenses.") && name is not ("DragShift.LICENSE" or "DragShift.THIRD-PARTY-NOTICES.md")) continue;
-                var file = name.StartsWith("DragShift.licenses.") ? name["DragShift.licenses.".Length..] : name["DragShift.".Length..] + (name.EndsWith("LICENSE") ? ".txt" : "");
-                using var src = asm.GetManifestResourceStream(name)!;
-                using var dst = File.Create(Path.Combine(dir, file));
-                src.CopyTo(dst);
-            }
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer.exe", $"\"{dir}\"") { UseShellExecute = true });
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("notepad.exe", $"\"{Path.Combine(dir, "THIRD-PARTY-NOTICES.md")}\"") { UseShellExecute = true });
-        }
-        catch (Exception ex)
-        {
-            Toast.Info("Couldn't open the licenses", ex.Message);
-        }
     }
 
     void ShowWheel(int x, int y)

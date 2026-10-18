@@ -156,13 +156,6 @@ static class SmokeTest
             Log($"     saved {Path.GetFileName(docx)} with the PDF's text");
         });
 
-        Step("licenses-embedded", () =>
-        {
-            var names = typeof(SmokeTest).Assembly.GetManifestResourceNames();
-            foreach (var required in new[] { "DragShift.LICENSE", "DragShift.THIRD-PARTY-NOTICES.md", "DragShift.licenses.Apache-2.0.txt", "DragShift.licenses.Magick.NET-and-ImageMagick-NOTICE.txt" })
-                if (!names.Contains(required)) throw new InvalidOperationException($"missing {required}");
-        });
-
         Log(failures.Count == 0 ? "SMOKE TEST PASSED" : $"SMOKE TEST FAILED: {string.Join(", ", failures)}");
         return failures.Count == 0 ? 0 : 1;
     }

@@ -4,14 +4,14 @@ using System.Windows.Media;
 
 namespace DragShift.App;
 
-/// <summary>Warm, light look. Styles are XAML parsed at runtime, so the build doesn't need the XAML compiler.</summary>
+/// <summary>Fresh green, light look. Styles are XAML parsed at runtime, so the build doesn't need the XAML compiler.</summary>
 static class Theme
 {
-    public static readonly Color Accent = Color.FromRgb(0xFF, 0x5A, 0x1F);
-    public static readonly Color Ink = Color.FromRgb(0x2B, 0x1D, 0x16);
-    public static readonly Color Muted = Color.FromRgb(0x8A, 0x6E, 0x60);
-    public static readonly Color Panel = Color.FromRgb(0xFF, 0xF4, 0xEC);
-    public static readonly Color PanelDeep = Color.FromRgb(0xFF, 0xE4, 0xD3);
+    public static readonly Color Accent = Color.FromRgb(0x1F, 0x9D, 0x55);
+    public static readonly Color Ink = Color.FromRgb(0x12, 0x26, 0x1B);
+    public static readonly Color Muted = Color.FromRgb(0x5A, 0x76, 0x66);
+    public static readonly Color Panel = Color.FromRgb(0xF1, 0xFA, 0xF4);
+    public static readonly Color PanelDeep = Color.FromRgb(0xDC, 0xF1, 0xE3);
 
     public static readonly SolidColorBrush AccentBrush = Freeze(new SolidColorBrush(Accent));
     public static readonly SolidColorBrush InkBrush = Freeze(new SolidColorBrush(Ink));
@@ -28,18 +28,18 @@ static class Theme
     const string Styles = """
         <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-          <SolidColorBrush x:Key="Accent" Color="#FF5A1F"/>
-          <SolidColorBrush x:Key="Ink" Color="#2B1D16"/>
+          <SolidColorBrush x:Key="Accent" Color="#1F9D55"/>
+          <SolidColorBrush x:Key="Ink" Color="#12261B"/>
 
           <Style TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#2B1D16"/>
+            <Setter Property="Foreground" Value="#12261B"/>
             <Setter Property="FontFamily" Value="Segoe UI Variable Text, Segoe UI"/>
           </Style>
 
           <Style x:Key="Pill" TargetType="ButtonBase">
-            <Setter Property="Foreground" Value="#2B1D16"/>
+            <Setter Property="Foreground" Value="#12261B"/>
             <Setter Property="Background" Value="#80FFFFFF"/>
-            <Setter Property="BorderBrush" Value="#30A0522D"/>
+            <Setter Property="BorderBrush" Value="#302E7D4F"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="14,6"/>
             <Setter Property="Margin" Value="3"/>
@@ -58,10 +58,10 @@ static class Theme
                       <Setter TargetName="B" Property="Background" Value="#C0FFFFFF"/>
                     </Trigger>
                     <Trigger Property="IsPressed" Value="True">
-                      <Setter TargetName="B" Property="Background" Value="#FFFFE0CC"/>
+                      <Setter TargetName="B" Property="Background" Value="#FFDCF1E3"/>
                     </Trigger>
                     <Trigger Property="ToggleButton.IsChecked" Value="True">
-                      <Setter TargetName="B" Property="Background" Value="#FF5A1F"/>
+                      <Setter TargetName="B" Property="Background" Value="#1F9D55"/>
                       <Setter Property="Foreground" Value="White"/>
                     </Trigger>
                     <Trigger Property="IsEnabled" Value="False">
@@ -77,9 +77,9 @@ static class Theme
           <Style TargetType="RadioButton" BasedOn="{StaticResource Pill}"/>
 
           <Style x:Key="Primary" TargetType="Button" BasedOn="{StaticResource Pill}">
-            <Setter Property="Background" Value="#FF5A1F"/>
+            <Setter Property="Background" Value="#1F9D55"/>
             <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderBrush" Value="#FF5A1F"/>
+            <Setter Property="BorderBrush" Value="#1F9D55"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
           </Style>
 
@@ -99,7 +99,7 @@ static class Theme
                   </Border>
                   <ControlTemplate.Triggers>
                     <Trigger Property="IsChecked" Value="True">
-                      <Setter TargetName="Ring" Property="BorderBrush" Value="#FF5A1F"/>
+                      <Setter TargetName="Ring" Property="BorderBrush" Value="#1F9D55"/>
                     </Trigger>
                   </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -108,7 +108,7 @@ static class Theme
           </Style>
 
           <Style TargetType="Slider">
-            <Setter Property="Foreground" Value="#FF5A1F"/>
+            <Setter Property="Foreground" Value="#1F9D55"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="IsMoveToPointEnabled" Value="True"/>
           </Style>
