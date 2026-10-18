@@ -33,8 +33,15 @@ jobs:
         shell: pwsh
         run: |
           $dir = Join-Path $env:RUNNER_TEMP "smoke"
-          $p = Start-Process -FilePath publish\DragShift.exe -ArgumentList "--smoke-test", "`"$dir`"" -Wait -PassThru
-          Get-Content (Join-Path $dir "smoke.log")
+          $out = Join-Path $env:RUNNER_TEMP "smoke-stdout.txt"
+          $err = Join-Path $env:RUNNER_TEMP "smoke-stderr.txt"
+          $p = Start-Process -FilePath publish\DragShift.exe -ArgumentList "--smoke-test", "`"$dir`"" -Wait -PassThru `
+                 -RedirectStandardOutput $out -RedirectStandardError $err
+          Write-Host "exit code: $($p.ExitCode)"
+          Write-Host "--- files"; Get-ChildItem $dir -ErrorAction SilentlyContinue | ForEach-Object { Write-Host $_.Name }
+          Write-Host "--- smoke.log"; Get-Content (Join-Path $dir "smoke.log") -ErrorAction SilentlyContinue
+          Write-Host "--- stdout"; Get-Content $out -ErrorAction SilentlyContinue
+          Write-Host "--- stderr"; Get-Content $err -ErrorAction SilentlyContinue
           if ($p.ExitCode -ne 0) { exit $p.ExitCode }
 
       - name: Upload smoke-test screenshots

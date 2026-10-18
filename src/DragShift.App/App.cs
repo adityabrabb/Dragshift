@@ -34,9 +34,31 @@ sealed class App : Application
             var test = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
             Theme.Apply(test);
             var code = 1;
+            void Crash(object? error)
+            {
+                // Anything that escapes the test must still leave a trace for CI.
+                var text = $"CRASH {error}";
+                Console.Error.WriteLine(text);
+                try { Directory.CreateDirectory(dir); File.AppendAllText(Path.Combine(dir, "smoke.log"), text + Environment.NewLine); } catch { }
+            }
+            AppDomain.CurrentDomain.UnhandledException += (_, e) => Crash(e.ExceptionObject);
+            test.DispatcherUnhandledException += (_, e) =>
+            {
+                Crash(e.Exception);
+                e.Handled = true;
+                test.Shutdown(2);
+            };
             test.Startup += (_, _) => test.Dispatcher.BeginInvoke(() =>
             {
-                code = SmokeTest.Run(dir);
+                try
+                {
+                    code = SmokeTest.Run(dir);
+                }
+                catch (Exception e)
+                {
+                    Crash(e);
+                    code = 3;
+                }
                 test.Shutdown(code);
             });
             test.Run();
