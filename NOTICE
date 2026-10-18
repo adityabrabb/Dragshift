@@ -1,0 +1,8 @@
+DragShift bundles third-party components:
+
+- U^2-Net (u2netp) salient object detection model, src/DragShift.Core/Models/u2netp.onnx
+  Copyright (c) 2020 Xuebin Qin. Licensed under the Apache License 2.0.
+  https://github.com/xuebinqin/U-2-Net (ONNX export distributed by https://github.com/danielgatis/rembg)
+
+- Magick.NET / ImageMagick — Apache License 2.0 / ImageMagick License.
+- ONNX Runtime — MIT License.
