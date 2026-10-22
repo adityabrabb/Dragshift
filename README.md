@@ -3,7 +3,7 @@
 # DragShift for Windows
 
 Drag a file, hold **Shift**, and a wheel pops up under the cursor. Drop on a format to convert, or on a tool to edit.
-The result is saved next to the original, and the original is never touched.
+Works with images, PDFs, videos and audio. The result is saved next to the original, and the original is never touched.
 
 <p align="center"><img src="docs/wheel.png" width="360" alt="The DragShift wheel"></p>
 
@@ -21,19 +21,29 @@ No Shift handy? Left-click the tray icon (or choose **Open the wheel**) and drag
 
 | | Notes |
 |---|---|
-| **PNG, JPG, WEBP, AVIF, BMP, TIFF** | Any image → any of these. Animated GIFs keep their frames in WEBP/TIFF. JPG/BMP get a white background where the source was transparent. |
+| **PNG, JPG, WEBP, AVIF, BMP, TIFF** | Any image → any of these. Animated GIFs keep their frames in WEBP/TIFF/GIF. JPG/BMP get a white background where the source was transparent. |
 | **HEIC** | Uses Windows' own HEIF encoder. DragShift checks at startup whether this PC can really write HEIC (Microsoft's free *HEIF Image Extensions* + *HEVC Video Extensions*); if not, the HEIC slice is greyed out and says why. |
-| **PDF** | Images → PDF (multi-frame files become multi-page PDFs). |
+| **GIF** | Images → GIF (animations keep their frames). Videos → animated GIF: 15 fps, at most 800 px wide, first 60 seconds. |
+| **PDF** | Images → PDF (multi-frame files become multi-page PDFs). **Several files → one PDF**: drop images and PDFs together and they're combined in name order (`2` before `10`) into `<first> Combined.pdf`. PDFs keep their real pages, so text stays selectable. |
 | **DOCX** | **PDF → editable Word text**: paragraphs in reading order (multi-column aware), font sizes, bold/italic, headings, hyphenated line breaks re-joined, and embedded images in place. Scanned pages (no text layer) come in as a picture of the page. Images → DOCX places each image on its own page. Tables and exact positioning aren't reproduced; text flows as paragraphs. |
+| **MP4** | Any video (MOV, MKV, AVI, WEBM, WMV, …) or GIF → H.264/AAC MP4 that plays everywhere. |
+| **WEBM** | Video or GIF → VP9/Opus WEBM. |
+| **MP3** | Audio (WAV, M4A, FLAC, OGG, …) → MP3, or the soundtrack of a video. |
 
-PDFs can be dropped too: they're rendered with Windows' built-in PDF engine, one image per page (or one multi-page TIFF).
+PDFs can be dropped too: they're rendered with PDFium, one image per page (or one multi-page TIFF).
 
-### Inner ring: tools (images)
+Video and audio use [FFmpeg](https://ffmpeg.org). DragShift finds it on PATH, next to `DragShift.exe`, or where winget
+installs it. If it isn't there, those slices are greyed out: choose **Add video support** in the tray menu to install it
+with winget (no admin rights needed).
+
+### Inner ring: tools
 
 | Tool | What it does |
 |---|---|
-| **Compress** | Smaller file, same format (PNG/BMP/TIFF become JPG, or a 256-color PNG if transparent). Caps the long side at 2560 px and strips metadata. Skips files it can't shrink. |
-| **Metadata** | Removes EXIF (camera, GPS location, …), XMP, IPTC and other profiles. Orientation is baked into the pixels first. |
+| **Compress** | Smaller file, same format (PNG/BMP/TIFF become JPG, or a 256-color PNG if transparent). Caps the long side at 2560 px and strips metadata. Videos become a smaller H.264 MP4, at most 1920 px. Skips files it can't shrink. |
+| **Metadata** | Removes EXIF (camera, GPS location, …), XMP, IPTC and other profiles. Orientation is baked into the pixels first. Videos and audio lose their tags (location, device, dates) without being re-encoded. |
+| **Resize…** | Pick 50%, 25%, 3840, 1920, 1280 or 800 px (long side), or type a size. One choice applies to every dropped picture; nothing is enlarged. |
+| **Copy text** | Puts the text of images (Windows' built-in OCR) and PDFs (their text layer, OCR for scanned pages) on the clipboard. Nothing is saved. Images need an OCR-capable Windows display language, which most are. |
 | **Remove BG** | Cuts out the main subject with a small on-device AI model (U²-Net). Saves a transparent PNG. Nothing is uploaded. |
 | **Crop…** | Drag the box or its handles. Free, original, 1:1, 4:5, 16:9 and 9:16. |
 | **Redact…** | Drag boxes over anything sensitive: black box, pixelate or blur. |
@@ -49,6 +59,7 @@ PDFs can be dropped too: they're rendered with Windows' built-in PDF engine, one
 - **Only for drags from Explorer and the desktop** (default on): so Shift-dragging to select text in other apps isn't
   interrupted. Turn it off to get the wheel for drags from any app.
 - **Start with Windows**.
+- **Add video support (FFmpeg)…**: shown only while FFmpeg is missing.
 
 ## Download
 
@@ -72,9 +83,10 @@ exercises each save path. CI runs it on every push.
 
 ### Layout
 
-- `src/DragShift.Core`: formats, conversions, tools, background rendering/removal (Magick.NET, ONNX Runtime). No UI.
+- `src/DragShift.Core`: formats, conversions, tools, background rendering/removal (Magick.NET, ONNX Runtime), PDF
+  combining and text (PdfPig), video/audio (`Media`, driving FFmpeg). No UI.
 - `src/DragShift.App`: tray app: global mouse hook (`DragWatcher`), the wheel (`WheelWindow`), editors, toasts, and
-  Windows-only services (PDF via `Windows.Data.Pdf`, HEIC via WIC).
+  Windows-only services (PDF pages via PDFium, HEIC via WIC, OCR via `Windows.Media.Ocr`).
 - `tests/DragShift.Core.Tests`: xUnit tests for the core.
 
 ## How the Shift+drag works

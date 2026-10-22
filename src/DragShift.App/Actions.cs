@@ -18,8 +18,18 @@ static class Actions
         if (files.Length == 0) return;
         switch (action)
         {
+            case WheelAction.Convert when WheelAction.IsCombine(action, files):
+                await Batch([files[0]], "Combining into one PDF", _ => [Converter.Combine(files)], $"Combined {files.Length} files");
+                break;
             case WheelAction.Convert c:
                 await Batch(files, $"Converting to {Formats.Label(c.Format)}", f => Converter.Convert(f, c.Format), $"Converted to {Formats.Label(c.Format)}");
+                break;
+            case WheelAction.Tool { Kind: ToolKind.Resize }:
+                if (ResizePicker.Ask(files.Length) is { } spec)
+                    await Batch(files, $"Resizing to {spec.Label}", f => [Tools.Resize(f, spec)], $"Resized to {spec.Label}");
+                break;
+            case WheelAction.Tool { Kind: ToolKind.CopyText }:
+                await CopyText(files);
                 break;
             case WheelAction.Tool t when !ToolInfo.IsInteractive(t.Kind):
                 await Batch(files, $"{action.Describe}…", f => [Tools.RunInstant(f, t.Kind)], action.Describe switch
@@ -63,6 +73,44 @@ static class Actions
         });
         var title = errors.Count == 0 ? done : outputs.Count == 0 ? "Nothing was saved" : $"{done} (with {errors.Count} problem{(errors.Count > 1 ? "s" : "")})";
         Toast.Done(title, outputs, errors);
+    }
+
+    /// <summary>Reads the text in images (OCR) and PDFs and puts it on the clipboard. Nothing is saved.</summary>
+    static async Task CopyText(string[] files)
+    {
+        Toast.Progress("Reading text…", files.Length == 1 ? Path.GetFileName(files[0]) : $"{files.Length} files");
+        var errors = new List<string>();
+        var texts = await Task.Run(() => files.Select(file =>
+        {
+            try
+            {
+                return TextExtractor.Extract(file);
+            }
+            catch (Exception e)
+            {
+                lock (errors) errors.Add(Describe(file, e));
+                return "";
+            }
+        }).ToList());
+        var text = string.Join("\n\n", texts.Where(t => t.Length > 0)).ReplaceLineEndings("\r\n");
+        if (text.Length == 0)
+        {
+            Toast.Done(errors.Count > 0 ? "Couldn't read the text" : "No text found", [], errors);
+            return;
+        }
+        try
+        {
+            Clipboard.SetText(text);
+        }
+        catch (Exception e)
+        {
+            // Another app can hold the clipboard open for a moment.
+            Toast.Done("Couldn't use the clipboard", [], [e.Message]);
+            return;
+        }
+        var preview = text.Length > 140 ? text[..140].TrimEnd() + "…" : text;
+        var words = text.Split((char[])[' ', '\r', '\n', '\t'], StringSplitOptions.RemoveEmptyEntries).Length;
+        Toast.Done($"Copied {words} word{(words == 1 ? "" : "s")}", [], [preview.ReplaceLineEndings(" "), .. errors]);
     }
 
     /// <summary>Opens the editor for one file. Returns false if the user cancelled (stop processing further files).</summary>

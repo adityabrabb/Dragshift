@@ -34,16 +34,33 @@ abstract record WheelAction
         Tool { Kind: ToolKind.Metadata } => "Strip metadata",
         Tool { Kind: ToolKind.RemoveBg } => "Remove background",
         Tool { Kind: ToolKind.AddBg } => "Add background…",
+        Tool { Kind: ToolKind.CopyText } => "Copy text",
         Tool t => ToolInfo.Label(t.Kind)[..1] + ToolInfo.Label(t.Kind)[1..].ToLowerInvariant() + "…",
         _ => "",
     };
 
-    public bool AppliesTo(string path) => this switch
+    public bool AppliesTo(string path) => WhyNot(path) is null;
+
+    /// <summary>Null when this action can take the file, otherwise a short reason for the wheel's center.</summary>
+    public string? WhyNot(string path) => this switch
     {
-        Convert c => Formats.CanConvert(path, c.Format),
-        Tool t => ToolInfo.CanApply(path, t.Kind),
-        _ => false,
+        Convert c => Formats.WhyNot(path, c.Format),
+        Tool t => ToolInfo.WhyNot(path, t.Kind),
+        _ => "",
     };
+
+    /// <summary>Several images and PDFs dropped on PDF are combined into one PDF.</summary>
+    public static bool IsCombine(WheelAction action, IReadOnlyCollection<string> files) =>
+        action is Convert { Format: TargetFormat.Pdf } && files.Count(Combinable) >= 2;
+
+    static bool Combinable(string path) => Formats.KindOf(path) is FileKind.Image or FileKind.Pdf;
+
+    /// <summary>The files an action will run on.</summary>
+    public string[] Pick(IEnumerable<string> files)
+    {
+        var all = files.ToArray();
+        return IsCombine(this, all) ? all.Where(Combinable).ToArray() : all.Where(AppliesTo).ToArray();
+    }
 }
 
 /// <summary>
@@ -52,15 +69,21 @@ abstract record WheelAction
 /// </summary>
 sealed class WheelWindow : Window
 {
-    const double Size = 420;
+    const double Size = 464;
     const double C = Size / 2;
     // Ring radii (DIPs): outer ring for formats, inner ring for tools, then the center disc.
-    const double OuterR = 196, OuterInnerR = 128, InnerR = 121, InnerInnerR = 70, CenterR = 63;
+    const double OuterR = 218, OuterInnerR = 145, InnerR = 138, InnerInnerR = 70, CenterR = 63;
 
     static readonly TargetFormat[] OuterOrder =
-        [TargetFormat.Png, TargetFormat.Webp, TargetFormat.Heic, TargetFormat.Jpg, TargetFormat.Avif, TargetFormat.Bmp, TargetFormat.Tiff, TargetFormat.Pdf, TargetFormat.Docx];
+    [
+        TargetFormat.Png, TargetFormat.Webp, TargetFormat.Heic, TargetFormat.Jpg, TargetFormat.Avif, TargetFormat.Bmp, TargetFormat.Tiff,
+        TargetFormat.Gif, TargetFormat.Pdf, TargetFormat.Docx, TargetFormat.Mp4, TargetFormat.Webm, TargetFormat.Mp3,
+    ];
     static readonly ToolKind[] InnerOrder =
-        [ToolKind.Compress, ToolKind.Metadata, ToolKind.Edit, ToolKind.Annotate, ToolKind.RemoveBg, ToolKind.AddBg, ToolKind.Crop, ToolKind.Redact];
+    [
+        ToolKind.Compress, ToolKind.Metadata, ToolKind.Edit, ToolKind.Resize, ToolKind.Annotate, ToolKind.RemoveBg, ToolKind.AddBg,
+        ToolKind.Crop, ToolKind.Redact, ToolKind.CopyText,
+    ];
 
     static readonly Brush SliceFill = Frozen(Color.FromArgb(0xF2, 0xE4, 0xF5, 0xEA));
     static readonly Brush SliceHover = Frozen(Color.FromRgb(0x1F, 0x9D, 0x55));
@@ -116,8 +139,8 @@ sealed class WheelWindow : Window
             Effect = new DropShadowEffect { BlurRadius = 24, ShadowDepth = 4, Opacity = 0.28 },
         }.At(C - OuterR - 6, C - OuterR - 6));
 
-        BuildRing(OuterOrder.Select(f => (WheelAction)new WheelAction.Convert(f)).ToArray(), OuterInnerR, OuterR, 14.5);
-        BuildRing(InnerOrder.Select(t => (WheelAction)new WheelAction.Tool(t)).ToArray(), InnerInnerR, InnerR, 10);
+        BuildRing(OuterOrder.Select(f => (WheelAction)new WheelAction.Convert(f)).ToArray(), OuterInnerR, OuterR, 14);
+        BuildRing(InnerOrder.Select(t => (WheelAction)new WheelAction.Tool(t)).ToArray(), InnerInnerR, InnerR, 9.5);
 
         canvas.Children.Add(new Ellipse
         {
@@ -311,7 +334,7 @@ sealed class WheelWindow : Window
         files = dragged;
         foreach (var s in slices)
         {
-            s.Enabled = files.Any(s.Action.AppliesTo);
+            s.Enabled = s.Action.Pick(files).Length > 0;
             s.Shape.Opacity = s.Enabled ? 1 : 0.4;
             s.Text.Opacity = s.Enabled ? 1 : 0.45;
         }
@@ -326,9 +349,7 @@ sealed class WheelWindow : Window
         {
             // Say why a greyed-out slice can't take these files.
             centerTitle.Text = s.Action.Describe;
-            centerSub.Text = s.Action is WheelAction.Convert { Format: var f } && !Formats.IsAvailable(f)
-                ? $"{Formats.Label(f)} isn't available on this PC"
-                : "Not for these files";
+            centerSub.Text = files.Select(s.Action.WhyNot).Distinct().Count() == 1 ? s.Action.WhyNot(files[0]) ?? "" : "Not for these files";
         }
         else if (hover is null) ResetCenter();
         e.Effects = hover is null ? DragDropEffects.None : DragDropEffects.Copy;
@@ -347,7 +368,7 @@ sealed class WheelWindow : Window
         }
         e.Effects = DragDropEffects.Copy;
         dropped = true;
-        var chosen = files.Where(s.Action.AppliesTo).ToArray();
+        var chosen = s.Action.Pick(files);
         // Let the drag source finish before doing anything that might open windows.
         Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
         {
@@ -369,7 +390,7 @@ sealed class WheelWindow : Window
         {
             s.Shape.Fill = s.Shape.Stroke = SliceHover;
             s.Text.Foreground = Brushes.White;
-            centerTitle.Text = s.Action.Describe;
+            centerTitle.Text = WheelAction.IsCombine(s.Action, files) ? "Combine into one PDF" : s.Action.Describe;
             centerSub.Text = FilesSummary();
         }
         else ResetCenter();
@@ -384,7 +405,7 @@ sealed class WheelWindow : Window
             return;
         }
         centerTitle.Text = files.Length == 1 ? System.IO.Path.GetFileName(files[0]) : $"{files.Length} files";
-        centerSub.Text = slices.Any(x => x.Enabled) ? "Drop on a format or tool" : "Not an image or PDF";
+        centerSub.Text = slices.Any(x => x.Enabled) ? "Drop on a format or tool" : "Not a file DragShift can use";
     }
 
     string FilesSummary() => files.Length == 1 ? System.IO.Path.GetFileName(files[0]) : $"{files.Length} files";

@@ -14,6 +14,8 @@ public enum ToolKind
     Redact,
     RemoveBg,
     AddBg,
+    Resize,
+    CopyText,
 }
 
 public static class ToolInfo
@@ -25,14 +27,50 @@ public static class ToolInfo
         ToolKind.Metadata => "METADATA",
         ToolKind.RemoveBg => "REMOVE BG",
         ToolKind.AddBg => "ADD BG",
+        ToolKind.CopyText => "COPY TEXT",
         _ => t.ToString().ToUpperInvariant(),
     };
 
     /// <summary>Tools that need a window to collect input; the rest run immediately on drop.</summary>
     public static bool IsInteractive(ToolKind t) => t is ToolKind.Edit or ToolKind.Annotate or ToolKind.Crop or ToolKind.Redact or ToolKind.AddBg;
 
-    /// <summary>Tools work on single images (not PDFs).</summary>
-    public static bool CanApply(string path, ToolKind t) => Formats.KindOf(path) == FileKind.Image;
+    /// <summary>
+    /// Tools work on single images. Compress and Metadata also take video (and Metadata audio) when FFmpeg is here;
+    /// Copy text reads PDFs, and images when Windows has an OCR language.
+    /// </summary>
+    public static bool CanApply(string path, ToolKind t) => WhyNot(path, t) is null;
+
+    /// <summary>Null when <see cref="CanApply"/> holds, otherwise a short reason fit for the wheel's center.</summary>
+    public static string? WhyNot(string path, ToolKind t)
+    {
+        var kind = Formats.KindOf(path);
+        var media = t switch
+        {
+            ToolKind.Compress => kind == FileKind.Video,
+            ToolKind.Metadata => kind is FileKind.Video or FileKind.Audio,
+            _ => false,
+        };
+        if (media) return Platform.Ffmpeg is null ? "Needs FFmpeg: tray menu → Add video support" : null;
+        if (t == ToolKind.CopyText)
+        {
+            if (kind == FileKind.Pdf) return null;
+            if (kind == FileKind.Image) return Platform.Ocr is null ? "Text recognition isn't set up in Windows" : null;
+        }
+        return kind == FileKind.Image ? null : "Not for these files";
+    }
+}
+
+/// <summary>A resize preset: a percentage of the original, or a maximum for the long side in pixels.</summary>
+public sealed record ResizeSpec(int? Percent = null, int? LongSide = null)
+{
+    public static readonly ResizeSpec[] Presets =
+        [new(Percent: 50), new(Percent: 25), new(LongSide: 3840), new(LongSide: 1920), new(LongSide: 1280), new(LongSide: 800)];
+
+    public string Label => Percent is { } p ? $"{p}%" : $"{LongSide}px";
+
+    internal uint TargetLongSide(uint current) => Percent is { } p
+        ? (uint)Math.Max(1, Math.Round(current * Math.Clamp(p, 1, 100) / 100.0))
+        : (uint)Math.Max(1, LongSide ?? (int)current);
 }
 
 public enum RedactStyle { Box, Pixelate, Blur }
@@ -73,6 +111,8 @@ public static class Tools
     /// <summary>Runs a non-interactive tool and returns the file written.</summary>
     public static string RunInstant(string source, ToolKind tool) => tool switch
     {
+        ToolKind.Compress when Formats.KindOf(source) == FileKind.Video => Media.Compress(source),
+        ToolKind.Metadata when Formats.KindOf(source) is FileKind.Video or FileKind.Audio => Media.StripMetadata(source),
         ToolKind.Compress => Compress(source),
         ToolKind.Metadata => StripMetadata(source),
         ToolKind.RemoveBg => RemoveBackground(source),
@@ -143,6 +183,21 @@ public static class Tools
         var output = OutputPaths.NextTo(source, Formats.Extension(target), " Clean");
         ImageIO.SaveRaster(img, target, output, quality);
         return output;
+    }
+
+    // ---- Resize ----
+
+    /// <summary>Shrinks so the long side is at most <paramref name="spec"/>'s size. Never enlarges.</summary>
+    public static string Resize(string source, ResizeSpec spec)
+    {
+        using var img = ImageIO.LoadFirst(source);
+        var longSide = Math.Max(img.Width, img.Height);
+        var target = spec.TargetLongSide(longSide);
+        if (target >= longSide)
+            throw new UserFacingException($"“{Path.GetFileName(source)}” is already {longSide} px or smaller.");
+        img.Resize(new MagickGeometry(target, target));
+        img.ResetPage();
+        return SaveSame(source, img, " " + spec.Label);
     }
 
     // ---- Crop ----

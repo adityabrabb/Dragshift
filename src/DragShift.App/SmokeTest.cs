@@ -30,8 +30,11 @@ static class SmokeTest
             Console.WriteLine(line);
             File.AppendAllText(log, line + Environment.NewLine);
         }
+        // SMOKE_ONLY=step,step runs just those steps (for tracking down a failure).
+        var only = Environment.GetEnvironmentVariable("SMOKE_ONLY")?.Split(',');
         void Step(string name, Action action)
         {
+            if (only is not null && !only.Contains(name)) return;
             try
             {
                 action();
@@ -119,11 +122,14 @@ static class SmokeTest
 
         Step("pdf", () =>
         {
-            // Windows' PDF engine on a PDF made by our own converter.
-            var pdf = Converter.Convert(sample, TargetFormat.Pdf).Single();
+            // PDFium on a PDF made by our own converter, under a name that isn't plain ASCII.
+            var pdf = Path.Combine(dir, "Résumé ü.pdf");
+            File.Move(Converter.Convert(sample, TargetFormat.Pdf).Single(), pdf);
             var back = Converter.Convert(pdf, TargetFormat.Png).Single();
             using var img = new MagickImage(back);
             if (img.Width < 100) throw new InvalidOperationException("PDF page rendered too small");
+            var center = img.GetPixels().GetPixel((int)img.Width / 2, (int)img.Height / 2).ToColor()!;
+            if (center.R < 150 || center.G > 100) throw new InvalidOperationException($"PDF page lost its picture: center is {center}");
         });
 
         Step("heic", () =>
@@ -154,6 +160,79 @@ static class SmokeTest
             using var reader = new StreamReader(zip.GetEntry("word/document.xml")!.Open());
             if (!reader.ReadToEnd().Contains("Hello from a text PDF")) throw new InvalidOperationException("text missing from DOCX");
             Log($"     saved {Path.GetFileName(docx)} with the PDF's text");
+        });
+
+        Step("resize", () =>
+        {
+            var picker = ResizePicker.ForSmokeTest();
+            picker.Show();
+            Pump(300);
+            Capture((FrameworkElement)picker.Content, Path.Combine(dir, "resize-picker.png"));
+            picker.Close();
+            var output = Tools.Resize(sample, new ResizeSpec(Percent: 50));
+            using var img = new MagickImage(output);
+            if (img.Width != 600) throw new InvalidOperationException($"50% of 1200 came out {img.Width} wide");
+            Log($"     saved {Path.GetFileName(output)}");
+        });
+
+        Step("combine-pdf", () =>
+        {
+            // Images and an existing PDF dropped together on PDF → one PDF with every page.
+            var pdf = Converter.Convert(sample, TargetFormat.Pdf).Single();
+            var png = Converter.Convert(sample, TargetFormat.Png).Single();
+            var combined = Converter.Combine([png, pdf, sample]);
+            using var doc = UglyToad.PdfPig.PdfDocument.Open(combined);
+            if (doc.NumberOfPages != 3) throw new InvalidOperationException($"expected 3 pages, got {doc.NumberOfPages}");
+            var wheel = new WheelWindow();
+            wheel.ShowPinned();
+            wheel.SimulateHover([png, pdf], new WheelAction.Convert(TargetFormat.Pdf));
+            Pump(300);
+            Capture((FrameworkElement)wheel.Content, Path.Combine(dir, "wheel-combine.png"));
+            wheel.Close();
+            Log($"     saved {Path.GetFileName(combined)}");
+        });
+
+        Step("copy-text", () =>
+        {
+            if (Platform.Ocr is null)
+            {
+                if (ToolInfo.CanApply(sample, ToolKind.CopyText)) throw new InvalidOperationException("Copy text offered without OCR");
+                Log("     no OCR language installed: Copy text is only offered for PDFs");
+                return;
+            }
+            var shot = Path.Combine(dir, "text.png");
+            using (var img = new MagickImage(MagickColors.White, 900, 200))
+            {
+                new Drawables().FontPointSize(48).FillColor(MagickColors.Black).Text(40, 120, "Invoice number 12345").Draw(img);
+                img.Write(shot);
+            }
+            var text = TextExtractor.Extract(shot);
+            if (!text.Contains("12345")) throw new InvalidOperationException($"OCR read \"{text}\"");
+            Log($"     read \"{text.ReplaceLineEndings(" ")}\"");
+        });
+
+        Step("video", () =>
+        {
+            if (Platform.Ffmpeg is not { } ffmpeg)
+            {
+                if (Formats.CanConvert("clip.mp4", TargetFormat.Gif)) throw new InvalidOperationException("video offered without FFmpeg");
+                Log("     FFmpeg not found: video slices are greyed out");
+                return;
+            }
+            var clip = Path.Combine(dir, "clip.mov");
+            var make = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(ffmpeg,
+                $"-hide_banner -loglevel error -f lavfi -i testsrc=size=640x360:rate=25:duration=2 -f lavfi -i sine=duration=2 -c:v libx264 -pix_fmt yuv420p -c:a aac -shortest \"{clip}\"")
+                { UseShellExecute = false, CreateNoWindow = true })!;
+            make.WaitForExit();
+            foreach (var f in new[] { TargetFormat.Mp4, TargetFormat.Webm, TargetFormat.Gif, TargetFormat.Mp3 })
+                Log($"     saved {Path.GetFileName(Converter.Convert(clip, f).Single())}");
+            Log($"     saved {Path.GetFileName(Tools.RunInstant(clip, ToolKind.Metadata))}");
+            var wheel = new WheelWindow();
+            wheel.ShowPinned();
+            wheel.SimulateHover([clip], new WheelAction.Convert(TargetFormat.Gif));
+            Pump(300);
+            Capture((FrameworkElement)wheel.Content, Path.Combine(dir, "wheel-video.png"));
+            wheel.Close();
         });
 
         Log(failures.Count == 0 ? "SMOKE TEST PASSED" : $"SMOKE TEST FAILED: {string.Join(", ", failures)}");

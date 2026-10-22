@@ -57,6 +57,12 @@ public static class ImageIO
         return (MagickImage)all[0].Clone();
     }
 
+    public static byte[] ToPngFirst(string path)
+    {
+        using var img = LoadFirst(path);
+        return ToPng(img);
+    }
+
     public static byte[] ToPng(IMagickImage<byte> image)
     {
         using var copy = image.Clone();
@@ -88,11 +94,11 @@ public static class ImageIO
             PrepareFor(f, target, quality);
             copy.Add(f);
         }
-        if (target == TargetFormat.Webp) copy.Optimize();
+        if (target is TargetFormat.Webp or TargetFormat.Gif) copy.Optimize();
         copy.Write(path, MagickFormatFor(target));
     }
 
-    public static bool SupportsMultipleFrames(TargetFormat target) => target is TargetFormat.Webp or TargetFormat.Tiff;
+    public static bool SupportsMultipleFrames(TargetFormat target) => target is TargetFormat.Webp or TargetFormat.Tiff or TargetFormat.Gif;
 
     static void PrepareFor(IMagickImage<byte> img, TargetFormat target, int? quality)
     {
@@ -134,6 +140,7 @@ public static class ImageIO
         TargetFormat.Avif => MagickFormat.Avif,
         TargetFormat.Bmp => MagickFormat.Bmp,
         TargetFormat.Tiff => MagickFormat.Tiff,
+        TargetFormat.Gif => MagickFormat.Gif,
         TargetFormat.Pdf => MagickFormat.Pdf,
         _ => throw new ArgumentOutOfRangeException(nameof(target), target, "Not a raster format"),
     };
@@ -144,7 +151,8 @@ public static class ImageIO
         var current = Formats.CurrentFormat(path);
         return current switch
         {
-            null or TargetFormat.Pdf or TargetFormat.Docx => TargetFormat.Png,
+            // Tools work on one frame: a still GIF would lose colors to its palette, so it becomes a PNG.
+            null or TargetFormat.Gif or TargetFormat.Pdf or TargetFormat.Docx or TargetFormat.Mp4 or TargetFormat.Webm or TargetFormat.Mp3 => TargetFormat.Png,
             // HEIC writing depends on an optional Windows codec; keep tool output dependable.
             TargetFormat.Heic => TargetFormat.Jpg,
             _ => current.Value,
