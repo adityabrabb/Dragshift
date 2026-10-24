@@ -20,6 +20,12 @@ public interface ITextRecognizer
     string Recognize(byte[] png);
 }
 
+/// <summary>Saves a presentation as a PDF. The Windows app supplies one backed by PowerPoint, or by LibreOffice without it.</summary>
+public interface IOfficeConverter
+{
+    void ToPdf(string source, string pdfPath);
+}
+
 /// <summary>
 /// Platform services the core can't provide portably. An unset service makes the matching actions unavailable:
 /// e.g. HEIC output is only offered when <see cref="Heic"/> is set, which the app does only after checking that this
@@ -31,10 +37,13 @@ public static class Platform
     static volatile IHeicEncoder? heic;
     static volatile ITextRecognizer? ocr;
     static volatile string? ffmpeg;
+    static volatile IOfficeConverter? office;
 
     public static IPdfRasterizer? Pdf { get => pdf; set => pdf = value; }
     public static IHeicEncoder? Heic { get => heic; set => heic = value; }
     public static ITextRecognizer? Ocr { get => ocr; set => ocr = value; }
+    /// <summary>Renders presentations (to PDF, then to pictures). Without it, .pptx still gets text, DOCX and the tools.</summary>
+    public static IOfficeConverter? Office { get => office; set => office = value; }
     /// <summary>Path to ffmpeg(.exe), for video and audio. See <see cref="Media.FindFfmpeg"/>.</summary>
     public static string? Ffmpeg { get => ffmpeg; set => ffmpeg = value; }
 }

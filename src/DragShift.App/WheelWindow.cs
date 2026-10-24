@@ -49,11 +49,11 @@ abstract record WheelAction
         _ => "",
     };
 
-    /// <summary>Several images and PDFs dropped on PDF are combined into one PDF.</summary>
+    /// <summary>Several images, PDFs, presentations and zips dropped on PDF are combined into one PDF.</summary>
     public static bool IsCombine(WheelAction action, IReadOnlyCollection<string> files) =>
         action is Convert { Format: TargetFormat.Pdf } && files.Count(Combinable) >= 2;
 
-    static bool Combinable(string path) => Formats.KindOf(path) is FileKind.Image or FileKind.Pdf;
+    static bool Combinable(string path) => Formats.Combinable(path);
 
     /// <summary>The files an action will run on.</summary>
     public string[] Pick(IEnumerable<string> files)

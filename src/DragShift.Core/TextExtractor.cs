@@ -4,7 +4,8 @@ using UglyToad.PdfPig.DocumentLayoutAnalysis.TextExtractor;
 namespace DragShift.Core;
 
 /// <summary>
-/// "Copy text": the words in an image (by OCR) or a PDF (from its text layer, with OCR for scanned pages).
+/// "Copy text": the words in an image (by OCR), a PDF (from its text layer, with OCR for scanned pages), a .pptx, or
+/// the files in a zip.
 /// </summary>
 public static class TextExtractor
 {
@@ -16,6 +17,8 @@ public static class TextExtractor
     {
         FileKind.Image => Recognize(ImageIO.ToPngFirst(path)),
         FileKind.Pdf => FromPdf(path),
+        FileKind.Presentation => Presentations.Text(path),
+        FileKind.Archive => Archives.Text(path),
         _ => throw new UserFacingException($"“{Path.GetFileName(path)}” has no text to copy."),
     };
 

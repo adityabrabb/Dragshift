@@ -19,3 +19,19 @@ public static class OutputPaths
     static bool SamePath(string a, string b) =>
         string.Equals(Path.GetFullPath(a), Path.GetFullPath(b), StringComparison.OrdinalIgnoreCase);
 }
+
+/// <summary>A private scratch folder under %TEMP%, deleted with everything in it when disposed.</summary>
+internal sealed class TempFolder : IDisposable
+{
+    int count;
+
+    public string Dir { get; } = Directory.CreateTempSubdirectory("dragshift-").FullName;
+
+    /// <summary>A new, unused path in the folder with the given extension.</summary>
+    public string NewFile(string extension) => Path.Combine(Dir, $"{Interlocked.Increment(ref count)}{extension}");
+
+    public void Dispose()
+    {
+        try { Directory.Delete(Dir, true); } catch { /* best effort */ }
+    }
+}

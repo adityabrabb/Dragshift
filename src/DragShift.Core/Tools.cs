@@ -36,7 +36,8 @@ public static class ToolInfo
 
     /// <summary>
     /// Tools work on single images. Compress and Metadata also take video (and Metadata audio) when FFmpeg is here;
-    /// Copy text reads PDFs, and images when Windows has an OCR language.
+    /// Copy text reads PDFs, and images when Windows has an OCR language. Compress, Metadata and Copy text also take
+    /// .pptx files, and zips (working on what's inside).
     /// </summary>
     public static bool CanApply(string path, ToolKind t) => WhyNot(path, t) is null;
 
@@ -44,6 +45,12 @@ public static class ToolInfo
     public static string? WhyNot(string path, ToolKind t)
     {
         var kind = Formats.KindOf(path);
+        if (kind == FileKind.Archive) return Archives.WhyNot(path, t);
+        if (kind == FileKind.Presentation)
+        {
+            if (t is not (ToolKind.Compress or ToolKind.Metadata or ToolKind.CopyText)) return "Not for these files";
+            return Presentations.IsOpenXml(path) ? null : "Save it as .pptx first";
+        }
         var media = t switch
         {
             ToolKind.Compress => kind == FileKind.Video,
@@ -113,6 +120,10 @@ public static class Tools
     {
         ToolKind.Compress when Formats.KindOf(source) == FileKind.Video => Media.Compress(source),
         ToolKind.Metadata when Formats.KindOf(source) is FileKind.Video or FileKind.Audio => Media.StripMetadata(source),
+        ToolKind.Compress when Formats.KindOf(source) == FileKind.Presentation => Presentations.Compress(source),
+        ToolKind.Metadata when Formats.KindOf(source) == FileKind.Presentation => Presentations.StripMetadata(source),
+        ToolKind.Compress when Formats.KindOf(source) == FileKind.Archive => Archives.Compress(source),
+        ToolKind.Metadata when Formats.KindOf(source) == FileKind.Archive => Archives.StripMetadata(source),
         ToolKind.Compress => Compress(source),
         ToolKind.Metadata => StripMetadata(source),
         ToolKind.RemoveBg => RemoveBackground(source),

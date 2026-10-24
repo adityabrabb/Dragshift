@@ -26,6 +26,8 @@ public enum FileKind
     Pdf,
     Video,
     Audio,
+    Presentation,
+    Archive,
 }
 
 public static class Formats
@@ -48,6 +50,11 @@ public static class Formats
         ".mp3", ".wav", ".m4a", ".aac", ".flac", ".ogg", ".oga", ".opus", ".wma", ".aiff", ".aif",
     };
 
+    static readonly HashSet<string> PresentationExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".pptx", ".pptm", ".ppsx", ".ppsm", ".potx", ".ppt", ".pps",
+    };
+
     public static string Label(TargetFormat f) => f.ToString().ToUpperInvariant();
 
     public static string Extension(TargetFormat f) => f switch
@@ -63,6 +70,8 @@ public static class Formats
         if (ext.Equals(".pdf", StringComparison.OrdinalIgnoreCase)) return FileKind.Pdf;
         if (ImageExtensions.Contains(ext)) return FileKind.Image;
         if (VideoExtensions.Contains(ext)) return FileKind.Video;
+        if (PresentationExtensions.Contains(ext)) return FileKind.Presentation;
+        if (ext.Equals(".zip", StringComparison.OrdinalIgnoreCase)) return FileKind.Archive;
         return AudioExtensions.Contains(ext) ? FileKind.Audio : FileKind.Unsupported;
     }
 
@@ -100,6 +109,8 @@ public static class Formats
         if (!IsAvailable(target)) return $"{Label(target)} isn't available on this PC";
         if (CurrentFormat(path) == target) return $"Already {Label(target)}";
         var kind = KindOf(path);
+        if (kind == FileKind.Archive) return Archives.WhyNot(path, target);
+        if (kind == FileKind.Presentation) return PresentationWhyNot(path, target);
         var fits = kind switch
         {
             FileKind.Image => !IsMedia(target) || (IsGif(path) && target is TargetFormat.Mp4 or TargetFormat.Webm),
@@ -112,6 +123,27 @@ public static class Formats
         var needsFfmpeg = kind is FileKind.Video or FileKind.Audio || IsMedia(target);
         return needsFfmpeg && Platform.Ffmpeg is null ? "Needs FFmpeg: tray menu → Add video support" : null;
     }
+
+    /// <summary>
+    /// Slides become a PDF, or one picture per slide, through PowerPoint/LibreOffice. DOCX (slide text and pictures)
+    /// is read straight from a .pptx, so it works without them.
+    /// </summary>
+    static string? PresentationWhyNot(string path, TargetFormat target)
+    {
+        if (IsMedia(target) || target == TargetFormat.Gif) return "Not for these files";
+        if (target == TargetFormat.Docx && Presentations.IsOpenXml(path)) return null;
+        if (Platform.Office is null) return "Needs PowerPoint or LibreOffice";
+        return target != TargetFormat.Pdf && Platform.Pdf is null ? "Reading PDFs isn't available on this system" : null;
+    }
+
+    /// <summary>Files that can go into a combined PDF: images, PDFs, presentations (when they can be rendered) and zips of those.</summary>
+    public static bool Combinable(string path) => KindOf(path) switch
+    {
+        FileKind.Image or FileKind.Pdf => true,
+        FileKind.Presentation => Platform.Office is not null,
+        FileKind.Archive => Archives.WhyNot(path, TargetFormat.Pdf) is null,
+        _ => false,
+    };
 
     public static bool IsAvailable(TargetFormat target) => target != TargetFormat.Heic || Platform.Heic is not null;
 

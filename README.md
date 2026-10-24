@@ -3,7 +3,7 @@
 # DragShift for Windows
 
 Drag a file, hold **Shift**, and a wheel pops up under the cursor. Drop on a format to convert, or on a tool to edit.
-Works with images, PDFs, videos and audio. The result is saved next to the original, and the original is never touched.
+Works with images, PDFs, videos, audio, PowerPoint files and zips. The result is saved next to the original, and the original is never touched.
 
 <p align="center"><img src="docs/wheel.png" width="360" alt="The DragShift wheel"></p>
 
@@ -32,6 +32,15 @@ No Shift handy? Left-click the tray icon (or choose **Open the wheel**) and drag
 
 PDFs can be dropped too: they're rendered with PDFium, one image per page (or one multi-page TIFF).
 
+**PowerPoint (.pptx, .ppsx, .potx, .ppt)**: PDF, or one picture per slide (`Deck Slide 1.png`, …; TIFF holds them all).
+The slides are drawn by PowerPoint, invisibly, or by LibreOffice when there's no PowerPoint; without either those
+slices are greyed out. **DOCX** reads a .pptx directly (slide titles as headings, text, tables, pictures, a page per
+slide), so it works anywhere. Decks can also go into a combined PDF with other files.
+
+**Zip**: works on what's inside. An image format gives a new zip with every picture converted and everything else as it
+was (`Photos WEBP.zip`). **PDF** puts the pictures, PDFs and slides inside into one PDF, in name order. Entries are only
+unpacked to a private temp folder, never by their own path.
+
 Video and audio use [FFmpeg](https://ffmpeg.org). DragShift finds it on PATH, next to `DragShift.exe`, or where winget
 installs it. If it isn't there, those slices are greyed out: choose **Add video support** in the tray menu to install it
 with winget (no admin rights needed).
@@ -42,6 +51,7 @@ with winget (no admin rights needed).
 |---|---|
 | **Compress** | Smaller file, same format (PNG/BMP/TIFF become JPG, or a 256-color PNG if transparent). Caps the long side at 2560 px and strips metadata. Videos become a smaller H.264 MP4, at most 1920 px. Skips files it can't shrink. |
 | **Metadata** | Removes EXIF (camera, GPS location, …), XMP, IPTC and other profiles. Orientation is baked into the pixels first. Videos and audio lose their tags (location, device, dates) without being re-encoded. |
+| **On .pptx and zips** | **Compress** shrinks the pictures inside (a .pptx stays a working deck) and repacks tightly. **Metadata** removes author, last editor, company, dates and comment authors' names from a .pptx (the title stays), and EXIF/GPS from pictures in either. **Copy text** reads slide text, and the PDFs, decks and (with OCR) pictures in a zip. |
 | **Resize…** | Pick 50%, 25%, 3840, 1920, 1280 or 800 px (long side), or type a size. One choice applies to every dropped picture; nothing is enlarged. |
 | **Copy text** | Puts the text of images (Windows' built-in OCR) and PDFs (their text layer, OCR for scanned pages) on the clipboard. Nothing is saved. Images need an OCR-capable Windows display language, which most are. |
 | **Remove BG** | Cuts out the main subject with a small on-device AI model (U²-Net). Saves a transparent PNG. Nothing is uploaded. |

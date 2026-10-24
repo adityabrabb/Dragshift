@@ -15,6 +15,10 @@ public static class Converter
             throw new UserFacingException($"“{Path.GetFileName(source)}” can't be converted to {Formats.Label(target)}.");
 
         var kind = Formats.KindOf(source);
+        if (kind == FileKind.Archive)
+            return [target == TargetFormat.Pdf ? WritePdf(OutputPaths.NextTo(source, ".pdf"), [source]) : Archives.ConvertImages(source, target)];
+        if (kind == FileKind.Presentation)
+            return ConvertPresentation(source, target);
         if (kind is FileKind.Video or FileKind.Audio || Formats.IsMedia(target))
             return [Media.Convert(source, target)];
 
@@ -51,60 +55,95 @@ public static class Converter
                 return [output];
             }
             default:
+                return SaveImages(source, frames, target, isPdf ? " Page" : null);
+        }
+    }
+
+    /// <summary>
+    /// Slides → PDF, or one picture per slide (or a multi-page TIFF), drawn by PowerPoint/LibreOffice. A .pptx → DOCX
+    /// is read directly instead: slide titles, text and pictures, a page per slide.
+    /// </summary>
+    static IReadOnlyList<string> ConvertPresentation(string source, TargetFormat target)
+    {
+        var title = Path.GetFileNameWithoutExtension(source);
+        if (target == TargetFormat.Docx && Presentations.IsOpenXml(source))
+        {
+            var output = OutputPaths.NextTo(source, ".docx");
+            DocxWriter.Write(output, Presentations.ToDocBlocks(source), title);
+            return [output];
+        }
+        using var temp = new TempFolder();
+        var pdf = temp.NewFile(".pdf");
+        Presentations.RenderPdf(source, pdf);
+        switch (target)
+        {
+            case TargetFormat.Pdf:
             {
-                if (frames.Count == 1)
-                {
-                    var output = OutputPaths.NextTo(source, ext);
-                    ImageIO.SaveRaster(frames[0], target, output);
-                    return [output];
-                }
-                if (ImageIO.SupportsMultipleFrames(target))
-                {
-                    var output = OutputPaths.NextTo(source, ext);
-                    ImageIO.SaveFrames(frames, target, output);
-                    return [output];
-                }
-                if (!isPdf)
-                {
-                    // Animated GIF → PNG/JPG etc: keep the first frame, like a thumbnail would.
-                    var output = OutputPaths.NextTo(source, ext);
-                    ImageIO.SaveRaster(frames[0], target, output);
-                    return [output];
-                }
-                // Multi-page PDF → one image per page.
-                var outputs = new List<string>();
-                for (var i = 0; i < frames.Count; i++)
-                {
-                    var output = OutputPaths.NextTo(source, ext, $" Page {i + 1}");
-                    ImageIO.SaveRaster(frames[i], target, output);
-                    outputs.Add(output);
-                }
-                return outputs;
+                var output = OutputPaths.NextTo(source, ".pdf");
+                File.Copy(pdf, output);
+                return [output];
+            }
+            case TargetFormat.Docx:
+            {
+                // Old binary .ppt: by way of the PDF.
+                var output = OutputPaths.NextTo(source, ".docx");
+                DocxWriter.Write(output, PdfToDocx.Extract(pdf), title);
+                return [output];
+            }
+            default:
+            {
+                using var frames = ImageIO.Load(pdf);
+                return SaveImages(source, frames, target, " Slide");
             }
         }
     }
 
     /// <summary>
+    /// Writes frames next to <paramref name="source"/>: one file, a multi-frame file where the format has frames, or
+    /// for pages and slides (<paramref name="pageWord"/> set) one file per page, e.g. "Deck Slide 3.png".
+    /// </summary>
+    static IReadOnlyList<string> SaveImages(string source, MagickImageCollection frames, TargetFormat target, string? pageWord)
+    {
+        var ext = Formats.Extension(target);
+        // A deck as an animated WEBP or GIF would be odd: slides get a file each, unless it's a multi-page TIFF.
+        var multiFrame = ImageIO.SupportsMultipleFrames(target) && (pageWord != " Slide" || target == TargetFormat.Tiff);
+        if (frames.Count == 1 || multiFrame || pageWord is null)
+        {
+            var output = OutputPaths.NextTo(source, ext);
+            if (frames.Count > 1 && multiFrame) ImageIO.SaveFrames(frames, target, output);
+            // Animated GIF → PNG/JPG etc: keep the first frame, like a thumbnail would.
+            else ImageIO.SaveRaster(frames[0], target, output);
+            return [output];
+        }
+        // Multi-page PDF → one image per page.
+        var outputs = new List<string>();
+        for (var i = 0; i < frames.Count; i++)
+        {
+            var output = OutputPaths.NextTo(source, ext, $"{pageWord} {i + 1}");
+            ImageIO.SaveRaster(frames[i], target, output);
+            outputs.Add(output);
+        }
+        return outputs;
+    }
+
+    /// <summary>
     /// Several files → one PDF, in natural name order ("2" before "10"). PDFs keep their pages as they are (text stays
-    /// text); images become one page per frame. Written next to the first file as "{name} Combined.pdf".
+    /// text); images become one page per frame; slides are drawn by PowerPoint/LibreOffice; zips add what's inside.
+    /// Written next to the first file as "{name} Combined.pdf".
     /// </summary>
     public static string Combine(IReadOnlyList<string> sources)
     {
-        var ordered = sources.Where(s => Formats.KindOf(s) is FileKind.Image or FileKind.Pdf)
-            .OrderBy(Path.GetFileName, NaturalComparer.Instance).ToList();
+        var ordered = sources.Where(Formats.Combinable).OrderBy(Path.GetFileName, NaturalComparer.Instance).ToList();
         if (ordered.Count == 0) throw new UserFacingException("There's nothing here to put in a PDF.");
+        return WritePdf(OutputPaths.NextTo(ordered[0], ".pdf", " Combined"), ordered);
+    }
 
+    static string WritePdf(string output, IReadOnlyList<string> files)
+    {
+        using var temp = new TempFolder();
         var parts = new List<byte[]>();
-        foreach (var file in ordered)
-        {
-            if (Formats.KindOf(file) == FileKind.Pdf)
-            {
-                parts.Add(File.ReadAllBytes(file));
-                continue;
-            }
-            using var frames = ImageIO.Load(file);
-            parts.Add(PdfPages(frames));
-        }
+        foreach (var file in files) AddPdfParts(file, parts, temp);
+        if (parts.Count == 0) throw new UserFacingException("There's nothing here to put in a PDF.");
 
         byte[] merged;
         try
@@ -115,9 +154,34 @@ public static class Converter
         {
             throw new UserFacingException("Couldn't combine these PDFs (one may be password-protected or damaged).", e);
         }
-        var output = OutputPaths.NextTo(ordered[0], ".pdf", " Combined");
         File.WriteAllBytes(output, merged);
         return output;
+    }
+
+    static void AddPdfParts(string file, List<byte[]> parts, TempFolder temp)
+    {
+        switch (Formats.KindOf(file))
+        {
+            case FileKind.Pdf:
+                parts.Add(File.ReadAllBytes(file));
+                break;
+            case FileKind.Image:
+            {
+                using var frames = ImageIO.Load(file);
+                parts.Add(PdfPages(frames));
+                break;
+            }
+            case FileKind.Presentation:
+            {
+                var pdf = temp.NewFile(".pdf");
+                Presentations.RenderPdf(file, pdf);
+                parts.Add(File.ReadAllBytes(pdf));
+                break;
+            }
+            case FileKind.Archive:
+                foreach (var inner in Archives.ExtractForPdf(file, temp)) AddPdfParts(inner, parts, temp);
+                break;
+        }
     }
 
     /// <summary>Each frame as a page, on white, at the image's own resolution (144 dpi when it has none).</summary>

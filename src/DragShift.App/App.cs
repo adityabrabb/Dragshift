@@ -33,7 +33,8 @@ sealed class App : Application
             Platform.Heic = WindowsHeicEncoder.TryCreate();
             Platform.Ocr = WindowsTextRecognizer.TryCreate();
             Platform.Ffmpeg = Media.FindFfmpeg();
-            var test = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+            Platform.Office = FindOffice();
+            var test =new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
             Theme.Apply(test);
             var code = 1;
             void Crash(object? error)
@@ -79,9 +80,10 @@ sealed class App : Application
         Platform.Pdf = new PdfiumRasterizer();
         // HEIC is offered on the wheel only if this PC's codecs can actually write it. Checked in the background.
         System.Threading.Tasks.Task.Run(() => Platform.Heic = WindowsHeicEncoder.TryCreate());
-        // Likewise copy text (needs an OCR language) and video/audio (needs FFmpeg).
+        // Likewise copy text (needs an OCR language), video/audio (needs FFmpeg) and slides (need PowerPoint or LibreOffice).
         System.Threading.Tasks.Task.Run(() => Platform.Ocr = WindowsTextRecognizer.TryCreate());
         System.Threading.Tasks.Task.Run(() => Platform.Ffmpeg = Media.FindFfmpeg());
+        System.Threading.Tasks.Task.Run(() => Platform.Office = FindOffice());
 
         var app = new App { ShutdownMode = ShutdownMode.OnExplicitShutdown };
         Theme.Apply(app);
@@ -89,6 +91,8 @@ sealed class App : Application
         GC.KeepAlive(singleInstance);
         return 0;
     }
+
+    static IOfficeConverter? FindOffice() => (IOfficeConverter?)PowerPointConverter.TryCreate() ?? LibreOfficeConverter.TryCreate();
 
     protected override void OnStartup(StartupEventArgs e)
     {
