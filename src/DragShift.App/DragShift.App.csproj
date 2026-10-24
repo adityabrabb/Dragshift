@@ -15,7 +15,7 @@
     <AssemblyName>DragShift</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\dragshift.ico</ApplicationIcon>
-    <Version>0.2.0</Version>
+    <Version>0.2.5</Version>
     <Product>DragShift</Product>
     <Description>Drag a file, hold Shift, drop it on the wheel to convert or edit it.</Description>
     <Copyright>DragShift contributors</Copyright>
